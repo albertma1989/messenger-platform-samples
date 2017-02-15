@@ -198,7 +198,7 @@ function receivedAuthentication(event) {
 
   // When an authentication is received, we'll send a message back to the sender
   // to let them know it was successful.
-  sendTextMessage(senderID, "Authentication successful");
+  sendTextMessage(senderID, "Authentication successful", "");
 }
 
 /*
@@ -240,13 +240,6 @@ function receivedMessage(event) {
     console.log("Received echo for message %s and app %d with metadata %s", 
       messageId, appId, metadata);
     return;
-  } else if (quickReply) {
-    var quickReplyPayload = quickReply.payload;
-    console.log("Quick reply for message %s with payload %s",
-      messageId, quickReplyPayload);
-
-    sendTextMessage(senderID, "Quick reply tapped");
-    return;
   }
 
   if (messageText) {
@@ -254,64 +247,9 @@ function receivedMessage(event) {
     // If we receive a text message, check to see if it matches any special
     // keywords and send back the corresponding example. Otherwise, just echo
     // the text we received.
-    switch (messageText) {
-      case 'image':
-        sendImageMessage(senderID);
-        break;
-
-      case 'gif':
-        sendGifMessage(senderID);
-        break;
-
-      case 'audio':
-        sendAudioMessage(senderID);
-        break;
-
-      case 'video':
-        sendVideoMessage(senderID);
-        break;
-
-      case 'file':
-        sendFileMessage(senderID);
-        break;
-
-      case 'button':
-        sendButtonMessage(senderID);
-        break;
-
-      case 'generic':
-        sendGenericMessage(senderID);
-        break;
-
-      case 'receipt':
-        sendReceiptMessage(senderID);
-        break;
-
-      case 'quick reply':
-        sendQuickReply(senderID);
-        break;        
-
-      case 'read receipt':
-        sendReadReceipt(senderID);
-        break;        
-
-      case 'typing on':
-        sendTypingOn(senderID);
-        break;        
-
-      case 'typing off':
-        sendTypingOff(senderID);
-        break;        
-
-      case 'account linking':
-        sendAccountLinking(senderID);
-        break;
-
-      default:
-        sendTextMessage(senderID, messageText);
-    }
+    sendButtonMessage(senderID);
   } else if (messageAttachments) {
-    sendTextMessage(senderID, "Message with attachment received");
+    sendButtonMessage(senderID);
   }
 }
 
@@ -357,13 +295,51 @@ function receivedPostback(event) {
   // The 'payload' param is a developer-defined field which is set in a postback 
   // button for Structured Messages. 
   var payload = event.postback.payload;
+  var name = getUserName(senderID);
 
-  console.log("Received postback for user %d and page %d with payload '%s' " + 
-    "at %d", senderID, recipientID, payload, timeOfPostback);
-
-  // When a postback is called, we'll send a message back to the sender to 
-  // let them know it was successful
-  sendTextMessage(senderID, "Postback called");
+  if (payload){
+  	switch (payload){
+  		case 'Get_Started':
+		  var messageData = {
+		    recipient: {
+		      id: senderID
+		    },
+		    message: {
+		      text: "你好！請選擇服務類別：",
+		      quick_replies: [
+		        {
+		          "content_type":"text",
+		          "title":"讚揚",
+		          "payload":"Complement"
+		        },
+		        {
+		          "content_type":"text",
+		          "title":"投訴",
+		          "payload":"Complain"
+		        },
+		        {
+		          "content_type":"text",
+		          "title":"其他",
+		          "payload":"Other"
+		        }
+		      ]
+		    }
+		  };
+		
+		  callSendAPI(messageData);
+		  break;
+		case 'Complement':
+		  sendTextMessage(senderID, "請輸入內容：", 'Complement');
+		  break;
+		case 'Complain':
+		  sendTextMessage(senderID, "請輸入內容：", 'Complain');
+		  break;
+		case 'Other':
+		  sendTextMessage(senderID, "請輸入內容：", 'Other');
+		  break;
+		
+  	}
+  }
 }
 
 /*
@@ -518,14 +494,14 @@ function sendFileMessage(recipientId) {
  * Send a text message using the Send API.
  *
  */
-function sendTextMessage(recipientId, messageText) {
+function sendTextMessage(recipientId, messageText, metadata) {
   var messageData = {
     recipient: {
       id: recipientId
     },
     message: {
       text: messageText,
-      metadata: "DEVELOPER_DEFINED_METADATA"
+      metadata: metadata,
     }
   };
 
@@ -546,20 +522,14 @@ function sendButtonMessage(recipientId) {
         type: "template",
         payload: {
           template_type: "button",
-          text: "This is test text",
-          buttons:[{
-            type: "web_url",
-            url: "https://www.oculus.com/en-us/rift/",
-            title: "Open Web URL"
-          }, {
-            type: "postback",
-            title: "Trigger Postback",
-            payload: "DEVELOPER_DEFINED_PAYLOAD"
-          }, {
-            type: "phone_number",
-            title: "Call Phone Number",
-            payload: "+16505551234"
-          }]
+          text: "如有任何問題，閣下可聯絡客戶服務主任",
+          "buttons":[
+       	{
+          "type":"phone_number",
+          "title":"聯絡客戶服務主任",
+          "payload":"+85224852485"
+       	}
+    	]
         }
       }
     }
@@ -820,6 +790,29 @@ function callSendAPI(messageData) {
       } else {
       console.log("Successfully called Send API for recipient %s", 
         recipientId);
+      }
+    } else {
+      console.error("Failed calling Send API", response.statusCode, response.statusMessage, body.error);
+    }
+  });  
+}
+
+function getUserName(user_id){
+  request({
+    uri: 'https://graph.facebook.com/v2.6/'+user_id+'?fields=first_name,last_name&access_token='+PAGE_ACCESS_TOKEN,
+    method: 'GET'
+
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var first_name = body.first_name;
+      var last_name = body.last_name;
+
+      if (first_name && last_name) {
+      	return first_name + last_name;
+      }else if (first_name) {
+      	return first_name ;
+      }else if (last_name){
+      	return last_name;
       }
     } else {
       console.error("Failed calling Send API", response.statusCode, response.statusMessage, body.error);

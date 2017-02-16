@@ -16,10 +16,19 @@ const
   crypto = require('crypto'),
   express = require('express'),
   https = require('https'),  
-  request = require('request');
+  request = require('request'),
+  fs = require('fs');
+  
+var options = { 
+    key: fs.readFileSync('../node/sec/albertmamama_host.key'),  
+    cert: fs.readFileSync('../node/sec/albertmamama_host.crt'), 
+    ca: fs.readFileSync('../node/sec/albertmamama_host.ca-bundle'), 
+    requestCert: false, 
+    rejectUnauthorized: true
+}; 
 
 var app = express();
-app.set('port', process.env.PORT || 5000);
+app.set('port', process.env.PORT || 443);
 app.set('view engine', 'ejs');
 app.use(bodyParser.json({ verify: verifyRequestSignature }));
 app.use(express.static('public'));
@@ -823,9 +832,11 @@ function getUserName(user_id){
 // Start server
 // Webhooks must be available via SSL with a certificate signed by a valid 
 // certificate authority.
-app.listen(app.get('port'), function() {
-  console.log('Node app is running on port', app.get('port'));
-});
+//app.listen(app.get('port'), function() {
+  //console.log('Node app is running on port', app.get('port'));
+//});
+
+https.createServer(options, app).listen(443);
 
 module.exports = app;
 
